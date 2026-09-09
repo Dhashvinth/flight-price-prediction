@@ -3,6 +3,9 @@ import numpy as np
 import joblib
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+from scipy import stats
+
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import RandomizedSearchCV
@@ -558,6 +561,336 @@ evaluate_model(
 
 
 # ======================================================
+# LINEAR REGRESSION ASSUMPTION CHECKS
+# ======================================================
+
+print("\n======================================")
+
+print("LINEAR REGRESSION ASSUMPTION CHECKS")
+
+print("======================================")
+
+
+# Predict on unseen test data.
+
+linear_test_prediction = linear_model.predict(
+
+    X_test
+
+)
+
+
+# Residual = Actual Price - Predicted Price
+
+linear_residuals = (
+
+    y_test
+
+    -
+
+    linear_test_prediction
+
+)
+
+
+# ======================================================
+# 1. LINEARITY AND HOMOSCEDASTICITY
+# ======================================================
+
+# Residuals should ideally be randomly scattered
+# around zero.
+#
+# A systematic curved pattern can indicate
+# non-linearity.
+#
+# A funnel-shaped pattern can indicate
+# heteroscedasticity.
+
+plt.figure(
+
+    figsize=(8, 5)
+
+)
+
+
+plt.scatter(
+
+    linear_test_prediction,
+
+    linear_residuals,
+
+    alpha=0.5
+
+)
+
+
+plt.axhline(
+
+    y=0,
+
+    linestyle="--"
+
+)
+
+
+plt.xlabel(
+
+    "Predicted Flight Price"
+
+)
+
+
+plt.ylabel(
+
+    "Residuals"
+
+)
+
+
+plt.title(
+
+    "Linear Regression: Residuals vs Predicted Values"
+
+)
+
+
+plt.tight_layout()
+
+
+plt.show()
+
+
+# ======================================================
+# 2. NORMALITY OF RESIDUALS
+# ======================================================
+
+# If residuals are approximately normal,
+# most points in the Q-Q plot should follow
+# the diagonal reference line.
+
+plt.figure(
+
+    figsize=(8, 5)
+
+)
+
+
+stats.probplot(
+
+    linear_residuals,
+
+    dist="norm",
+
+    plot=plt
+
+)
+
+
+plt.title(
+
+    "Linear Regression: Q-Q Plot of Residuals"
+
+)
+
+
+plt.tight_layout()
+
+
+plt.show()
+
+
+# ======================================================
+# 3. MULTICOLLINEARITY SCREENING
+# ======================================================
+
+# We perform a simple pairwise correlation check
+# among the original numerical predictors.
+#
+# Absolute correlation >= 0.80 is treated as
+# a warning of potentially redundant numerical
+# information.
+#
+# This is a screening check rather than a complete
+# VIF-based multicollinearity analysis.
+
+numerical_correlation = (
+
+    X_train[numerical_cols]
+
+    .corr()
+
+    .abs()
+
+)
+
+
+high_correlation_pairs = []
+
+
+for i in range(
+
+    len(numerical_correlation.columns)
+
+):
+
+    for j in range(i):
+
+        correlation_value = (
+
+            numerical_correlation.iloc[i, j]
+
+        )
+
+
+        if correlation_value >= 0.80:
+
+            high_correlation_pairs.append(
+
+                (
+
+                    numerical_correlation.columns[i],
+
+                    numerical_correlation.columns[j],
+
+                    correlation_value
+
+                )
+
+            )
+
+
+print(
+
+    "\nHighly Correlated Numerical Feature Pairs "
+    "(absolute correlation >= 0.80):"
+
+)
+
+
+if len(high_correlation_pairs) == 0:
+
+    print(
+
+        "No highly correlated numerical "
+        "feature pairs found."
+
+    )
+
+
+else:
+
+    for (
+
+        feature_1,
+
+        feature_2,
+
+        correlation_value
+
+    ) in high_correlation_pairs:
+
+        print(
+
+            feature_1,
+
+            "<->",
+
+            feature_2,
+
+            ":",
+
+            round(
+
+                correlation_value,
+
+                3
+
+            )
+
+        )
+
+
+# ======================================================
+# 4. INDEPENDENCE OF OBSERVATIONS
+# ======================================================
+
+# The dataset contains individual flight observations
+# rather than a conventional time-series sequence.
+#
+# Therefore we assess independence mainly from the
+# dataset structure rather than automatically applying
+# a time-series residual test such as Durbin-Watson.
+
+print("\nIndependence Check:")
+
+
+print(
+
+    "The dataset contains individual flight observations. "
+    "No time-series residual test is applied."
+
+)
+
+
+# ======================================================
+# ASSUMPTION CHECK INTERPRETATION
+# ======================================================
+
+print(
+
+    "\nHow to interpret the diagnostic results:"
+
+)
+
+
+print(
+
+    "1. Residuals should be randomly scattered around zero."
+
+)
+
+
+print(
+
+    "2. A curved pattern in the residual plot "
+    "suggests non-linearity."
+
+)
+
+
+print(
+
+    "3. A funnel-shaped residual plot suggests "
+    "non-constant error variance."
+
+)
+
+
+print(
+
+    "4. Q-Q plot points close to the diagonal suggest "
+    "approximately normal residuals."
+
+)
+
+
+print(
+
+    "5. Highly correlated predictors can indicate "
+    "multicollinearity."
+
+)
+
+
+print(
+
+    "\nThese assumptions apply to the Linear Regression "
+    "baseline and are not strict assumptions of XGBoost."
+
+)
+
+
+# ======================================================
 # RANDOM FOREST
 # ======================================================
 
@@ -736,10 +1069,14 @@ parameters = {
 }
 
 
-# RandomizedSearchCV will not try every possible
-# combination.
+# RandomizedSearchCV does not test every possible
+# hyperparameter combination.
 #
-# It will try only 20 combinations.
+# It randomly evaluates 20 combinations using
+# 5-fold cross-validation.
+#
+# The combination with the lowest average
+# cross-validated RMSE is selected.
 
 random_search = RandomizedSearchCV(
 
@@ -769,7 +1106,33 @@ random_search.fit(
 )
 
 
+# ======================================================
+# BEST CROSS-VALIDATED RMSE
+# ======================================================
+
+# Scikit-learn stores RMSE as a negative score
+# because higher scores are normally considered better.
+#
+# Multiplying by -1 converts it back to normal RMSE.
+
+best_cv_rmse = (
+
+    -random_search.best_score_
+
+)
+
+
+print("\nBest Cross-Validated RMSE:")
+
+print(best_cv_rmse)
+
+
+# ======================================================
+# BEST PARAMETERS
+# ======================================================
+
 print("\nBest Parameters:")
+
 
 print(
 
@@ -782,7 +1145,14 @@ print(
 # FINAL MODEL
 # ======================================================
 
-final_model = random_search.best_estimator_
+# This is the XGBoost pipeline containing the
+# hyperparameters selected using cross-validation.
+
+final_model = (
+
+    random_search.best_estimator_
+
+)
 
 
 # ======================================================
@@ -916,6 +1286,7 @@ print(final_test_r2)
 
 print("\nTrain-Test R2 Difference:")
 
+
 print(
 
     final_train_r2
@@ -946,12 +1317,26 @@ final_cv_scores = cross_val_score(
 )
 
 
-print("\nFinal Model Cross Validation R2 Scores:")
+print(
 
-print(final_cv_scores)
+    "\nFinal Model Cross Validation R2 Scores:"
+
+)
 
 
-print("\nFinal Average Cross Validation R2:")
+print(
+
+    final_cv_scores
+
+)
+
+
+print(
+
+    "\nFinal Average Cross Validation R2:"
+
+)
+
 
 print(
 
@@ -964,7 +1349,16 @@ print(
 # SAVE FINAL MODEL
 # ======================================================
 
-model_path = Path(__file__).parent / "model.pkl"
+model_path = (
+
+    Path(__file__).parent
+
+    /
+
+    "model.pkl"
+
+)
+
 
 joblib.dump(
 
@@ -975,6 +1369,17 @@ joblib.dump(
 )
 
 
-print("\nModel Saved Successfully!")
+print(
 
-print("Model saved at:", model_path)
+    "\nModel Saved Successfully!"
+
+)
+
+
+print(
+
+    "Model saved at:",
+
+    model_path
+
+)
