@@ -1,120 +1,82 @@
 # Flight Price Prediction
 
-An end-to-end machine learning project that predicts flight ticket prices from journey and flight details. The project compares multiple regression approaches, tunes an XGBoost model, saves the trained pipeline, and serves predictions through a Streamlit web application.
+A machine learning project that predicts flight ticket prices based on flight and journey details.
 
-#Live Demo
+The project compares different regression models and deploys the final model using Streamlit.
 
-Try the deployed Streamlit application here:
+## Live Demo
 
-[Flight Price Prediction - Live App] (https://flight-price-prediction-slacdrwa42j5yxgptc5qhg.streamlit.app/)
+[Flight Price Prediction - Live App](https://flight-price-prediction-slacdrwa42j5yxgptc5qhg.streamlit.app/)
 
-#Live Demo
+## Project Workflow
 
-Try the deployed Streamlit application here:
-
-[Flight Price Prediction - Live App] (https://flight-price-prediction-slacdrwa42j5yxgptc5qhg.streamlit.app/)
-## Project Overview
-
-Flight prices can vary based on airline, source, destination, journey
-date, departure and arrival time, duration, number of stops, and
-additional flight information.
-
-The project workflow includes:
-
--   Data inspection and missing-value handling
--   Price outlier analysis
--   Date, time, duration, and stop feature engineering
--   Categorical encoding and numerical preprocessing
--   Multiple Linear Regression as a baseline
--   Random Forest Regression
--   XGBoost Regression
--   Train/test evaluation and 5-fold cross-validation
--   XGBoost hyperparameter tuning with `RandomizedSearchCV`
--   Model serialization with Joblib
--   Interactive prediction using Streamlit
-
-## Dataset
-
-The dataset contains 10,683 flight records before cleaning. It includes
-Airline, Date of Journey, Source, Destination, Route, Departure Time,
-Arrival Time, Duration, Total Stops, Additional Information, and Price.
-
-One incomplete record is removed during training.
-
-## Data Preprocessing
-
-The preprocessing logic is kept in `preprocess.py` so the same
-transformations are used during training and prediction.
-
-Key transformations:
-
--   Extract journey day, month, and day of week
--   Extract departure hour and minute
--   Extract arrival hour and minute
--   Convert flight duration into total minutes
--   Convert total stops into numerical values
--   Drop original route/date/time columns after feature engineering
--   One-hot encode categorical features
--   Median-impute numerical features
--   Most-frequent-impute categorical features
--   Standard-scale numerical features
-
-## Outlier Analysis
-
-Flight-price outliers are identified using the IQR method. High-price
-records are inspected rather than automatically deleted because several
-represent legitimate premium or business-class fares. The final model
-therefore retains these observations.
+- Data cleaning and preprocessing
+- Feature engineering for journey date, time, duration, and stops
+- Outlier analysis
+- Multiple Linear Regression as a baseline
+- Linear Regression residual diagnostics
+- Random Forest Regression
+- XGBoost Regression
+- Model evaluation using MAE, RMSE, and R²
+- 5-fold cross-validation
+- XGBoost hyperparameter tuning using RandomizedSearchCV
+- Streamlit deployment
 
 ## Models Compared
 
-1.  Multiple Linear Regression
-2.  Random Forest Regressor
-3.  XGBoost Regressor
+| Model | Test MAE | Test RMSE | Test R² |
+|---|---:|---:|---:|
+| Multiple Linear Regression | ₹1,746.85 | ₹2,552.73 | 0.6978 |
+| Random Forest | ₹603.21 | ₹1,414.49 | 0.9072 |
+| XGBoost - Before Tuning | ₹838.76 | ₹1,414.92 | 0.9072 |
+| Tuned XGBoost | ₹787.61 | ₹1,474.91 | 0.8991 |
 
-Multiple Linear Regression provides a baseline. Random Forest and
-XGBoost are used to capture nonlinear relationships and interactions.
+Multiple Linear Regression was used as the baseline. Residual diagnostics indicated limitations in the linear model, so nonlinear tree-based models were also evaluated.
 
-## Model Evaluation
+Random Forest and XGBoost both showed significant improvement over the baseline.
 
-Models are evaluated using MAE, RMSE, R², training-versus-testing R²,
-and 5-fold cross-validation.
+## XGBoost Hyperparameter Tuning
 
-Final XGBoost results:
+XGBoost was tuned using `RandomizedSearchCV` with 5-fold cross-validation and RMSE as the optimization metric.
 
-  Metric              Result
-  -------------- -----------
-  Training R²         0.9694
-  Testing R²          0.9209
-  Testing MAE        ₹727.72
-  Testing RMSE     ₹1,306.22
+Best parameters:
 
-Training and testing scores are both reported so model generalization
-can be assessed rather than relying only on training performance.
+```text
+n_estimators = 400
+learning_rate = 0.1
+max_depth = 5
+min_child_weight = 3
+subsample = 0.9
+```
 
-## Hyperparameter Tuning
+Best cross-validated RMSE: **₹1,506.04**
 
-`RandomizedSearchCV` tunes important XGBoost parameters:
+## Final Model
 
--   `n_estimators`
--   `learning_rate`
--   `max_depth`
--   `min_child_weight`
--   `subsample`
+The tuned XGBoost model was used for deployment.
 
-These parameters help balance predictive performance and model
-complexity.
+Final test performance:
 
-## Streamlit Application
+- **R²:** 0.8991
+- **MAE:** ₹787.61
+- **RMSE:** ₹1,474.91
+- **Average Cross-Validation R²:** 0.8879
 
-The Streamlit interface accepts airline, source, destination, journey
-date, departure and arrival time, number of stops, and additional flight
-information. It applies the same preprocessing used during training and
-returns the predicted flight price.
+## Technologies Used
+
+- Python
+- Pandas
+- NumPy
+- scikit-learn
+- XGBoost
+- Matplotlib
+- SciPy
+- Streamlit
+- Joblib
 
 ## Project Structure
 
-``` text
+```text
 Flight-Price-Prediction/
 ├── app.py
 ├── preprocess.py
@@ -126,39 +88,22 @@ Flight-Price-Prediction/
 └── README.md
 ```
 
-## Installation
+## Run Locally
 
-``` bash
-git clone <your-repository-url>
-cd Flight-Price-Prediction
+Install the dependencies:
+
+```bash
 pip install -r requirements.txt
 ```
 
-## Run the Application
+Run the Streamlit application:
 
-Because `model.pkl` is included, the app can be started directly:
-
-``` bash
+```bash
 streamlit run app.py
 ```
 
-## Retrain the Model
+To retrain the model:
 
-``` bash
+```bash
 python train_model.py
 ```
-
-This compares the regression models, tunes XGBoost, evaluates the final
-model, and saves a new `model.pkl`.
-
-## Technologies Used
-
-Python, Pandas, NumPy, scikit-learn, XGBoost, Streamlit, and Joblib.
-
-## Key Learning Outcomes
-
-This project demonstrates end-to-end regression development, feature
-engineering for date/time data, categorical and numerical preprocessing,
-baseline-versus-ensemble comparison, generalization checks,
-hyperparameter tuning, consistent training/inference preprocessing, and
-Streamlit deployment.
